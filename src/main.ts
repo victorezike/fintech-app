@@ -1,23 +1,32 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { INestApplication } from '@nestjs/common';
+import { ExpressAdapter } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app: INestApplication = await NestFactory.create(AppModule, new ExpressAdapter());
 
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.enableCors({
+    origin: 'http://localhost:5173', 
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 
-  const config = new DocumentBuilder()
-    .setTitle('Fintech API')
-    .setDescription('API for fintech application')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  const server = app.getHttpAdapter().getInstance();
+  const router = server._router || server.router; 
+  if (router && router.stack) {
+    console.log('Available routes:');
+    router.stack.forEach((layer: any) => {
+      if (layer.route) {
+        const methods = Object.keys(layer.route.methods)
+          .join(', ')
+          .toUpperCase();
+        console.log(`${methods} ${layer.route.path}`);
+      }
+    });
+  } else {
+    console.log('Router not found. Routes may not be registered.');
+  }
 
   await app.listen(3000);
 }

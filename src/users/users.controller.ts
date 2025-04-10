@@ -15,6 +15,6 @@ export class UsersController {
   @Get('me')
   @ApiResponse({ status: 200, description: 'Get current user' })
   getProfile(@AuthUser() user: User) {
-    return this.usersService.findOne(user.id);
+    return this.usersService.findById(user.id);
   }
 }

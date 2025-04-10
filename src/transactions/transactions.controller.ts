@@ -1,30 +1,53 @@
-import { Controller, Post, Body, UseGuards, Get } from '@nestjs/common';
+import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
-import { ApiTags, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { AuthUser } from '../common/decorators/auth.decorator';
-import { User } from '../users/entities/user.entity';
 
-@ApiTags('transactions')
 @Controller('transactions')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
-  @Post()
-  @ApiResponse({ status: 201, description: 'Transaction created successfully' })
-  create(
-    @Body() createTransactionDto: CreateTransactionDto,
-    @AuthUser() user: User,
-  ) {
-    return this.transactionsService.create(createTransactionDto, user);
+  @UseGuards(JwtAuthGuard)
+  @Get('balance')
+  async getBalance(@Request() req) {
+    return this.transactionsService.getBalance(req.user.sub);
   }
 
-  @Get('balance')
-  @ApiResponse({ status: 200, description: 'Current balance' })
-  getBalance(@AuthUser() user: User) {
-    return this.transactionsService.getBalance(user.id);
+  @UseGuards(JwtAuthGuard)
+  @Get('history')
+  async getTransactionHistory(@Request() req) {
+    return this.transactionsService.getTransactionHistory(req.user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('deposit')
+  async deposit(@Request() req, @Body('amount') amount: number) {
+    const newBalance = await this.transactionsService.deposit(req.user.sub, amount);
+    return { message: 'Deposit successful', newBalance };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('withdrawal')
+  async withdraw(@Request() req, @Body('amount') amount: number) {
+    const newBalance = await this.transactionsService.withdraw(req.user.sub, amount);
+    return { message: 'Withdrawal successful', newBalance };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('transfer')
+  async transfer(
+    @Request() req,
+    @Body('amount') amount: number,
+    @Body('recipientEmail') recipientEmail: string,
+  ) {
+    const { senderBalance, recipientBalance } = await this.transactionsService.transfer(
+      req.user.sub,
+      recipientEmail,
+      amount,
+    );
+    return {
+      message: 'Transfer successful',
+      senderNewBalance: senderBalance,
+      recipientNewBalance: recipientBalance,
+    };
   }
 }

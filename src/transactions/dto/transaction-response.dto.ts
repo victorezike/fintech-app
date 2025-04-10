@@ -5,17 +5,17 @@ export class TransactionResponseDto {
   id: number;
 
   @ApiProperty()
-  amount: number;
+  amount: string;
 
   @ApiProperty()
   type: string;
 
   @ApiProperty()
-  createdAt: Date;
-
-  @ApiProperty()
-  userId: number;
+  user: { id: number; name: string; email: string; balance: string };
 
   @ApiProperty({ required: false })
   recipientId?: number;
+
+  @ApiProperty()
+  createdAt: Date;
 }

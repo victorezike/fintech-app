@@ -1,40 +1,33 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import * as bcrypt from 'bcrypt';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
-    private jwtService: JwtService,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<any> {
-    const { name, email, password } = registerDto;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await this.usersService.create({
-      name,
-      email,
-      password: hashedPassword,
-    });
+  async validateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.usersService.findByEmail(email);
+    if (user && (await this.usersService.validatePassword(password, user.password))) {
+      return user;
+    }
+    return null;
+  }
+
+  async login(user: User) {
     const payload = { email: user.email, sub: user.id };
     return {
       access_token: this.jwtService.sign(payload),
+      user: { id: user.id, name: user.name, email: user.email, balance: user.balance },
     };
   }
 
-  async login(loginDto: LoginDto): Promise<any> {
-    const { email, password } = loginDto;
-    const user = await this.usersService.findByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    const payload = { email: user.email, sub: user.id };
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+  async register(name: string, email: string, password: string) {
+    const user = await this.usersService.create(name, email, password);
+    return this.login(user);
   }
 }

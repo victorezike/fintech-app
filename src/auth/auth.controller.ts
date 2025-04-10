@@ -1,23 +1,22 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { ApiTags, ApiResponse } from '@nestjs/swagger';
 
-@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
-  @ApiResponse({ status: 201, description: 'User registered successfully' })
-  register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  @Post('login')
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+    if (!user) {
+      throw new BadRequestException('Invalid credentials');
+    }
+    return this.authService.login(user);
   }
 
-  @Post('login')
-  @ApiResponse({ status: 200, description: 'User logged in successfully' })
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  @Post('register')
+  async register(@Body() registerDto: { name: string; email: string; password: string }) {
+    return this.authService.register(registerDto.name, registerDto.email, registerDto.password);
   }
 }
